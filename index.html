@@ -495,19 +495,12 @@
 
     <!-- Header -->
     <header class="header-scan border-b border-white/5 bg-shark-950/80 backdrop-blur-xl sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-center">
             <div class="flex items-center gap-3">
-                <div
-                    class="w-8 h-8 rounded-lg bg-gradient-to-br from-acid-400 to-acid-600 flex items-center justify-center text-shark-950 font-mono font-black text-sm">
-                    Ψ</div>
                 <div>
-                    <h1 class="text-sm font-bold text-white tracking-tight leading-none">Cyrillic Homograph</h1>
-                    <p class="text-xs text-gray-500 font-mono leading-none mt-0.5">& Punycode Utility v2.0</p>
+                    <h1 class="text-3xl font-bold text-white tracking-tight leading-none text-center">Cyrillic Homograph
+                    </h1>
                 </div>
-            </div>
-            <div class="flex items-center gap-2">
-                <div class="status-dot"></div>
-                <span class="text-xs text-gray-500 font-mono hidden sm:inline">READY</span>
             </div>
         </div>
     </header>
@@ -526,9 +519,8 @@
         <section class="card-glow rounded-2xl p-5">
             <div class="flex items-center justify-between mb-4">
                 <div>
-                    <div class="section-label mb-1">Modul 01</div>
                     <h2 class="text-base font-bold text-white">Kamus Karakter Homoglyph</h2>
-                    <p class="text-xs text-gray-500 mt-0.5">Klik karakter untuk menyalinnya ke clipboard</p>
+                    <p class="text-xs text-gray-500 mt-0.5">Klik karakter untuk memasukkannya ke input form</p>
                 </div>
                 <div class="flex gap-2 flex-wrap justify-end">
                     <span class="tag-pill tag-latin">Latin</span>
@@ -557,7 +549,6 @@
             <!-- Input Panel -->
             <section class="card-glow rounded-2xl p-5 flex flex-col gap-4">
                 <div>
-                    <div class="section-label mb-1">Modul 02</div>
                     <h2 class="text-base font-bold text-white">Input Teks / Domain</h2>
                     <p class="text-xs text-gray-500 mt-0.5">Masukkan teks yang mengandung karakter Cyrillic/Greek</p>
                 </div>
@@ -596,7 +587,6 @@
             <!-- Simulasi Domain -->
             <section class="card-glow rounded-2xl p-5 flex flex-col gap-4">
                 <div>
-                    <div class="section-label mb-1">Modul 03</div>
                     <h2 class="text-base font-bold text-white">Simulasi Domain Palsu</h2>
                     <p class="text-xs text-gray-500 mt-0.5">Domain terlihat asli secara visual tapi mengandung karakter
                         Unicode tersembunyi</p>
@@ -639,13 +629,7 @@
         <section class="terminal-border rounded-2xl p-5 bg-shark-900/50">
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-3">
-                    <div class="section-label">Modul 04</div>
                     <h2 class="text-base font-bold text-white ml-2">Output Konversi Punycode</h2>
-                    <div class="flex gap-1.5 ml-2">
-                        <div class="w-2.5 h-2.5 rounded-full bg-red-500/60"></div>
-                        <div class="w-2.5 h-2.5 rounded-full bg-yellow-500/60"></div>
-                        <div class="w-2.5 h-2.5 rounded-full bg-acid-400/60"></div>
-                    </div>
                 </div>
                 <button class="btn-copy-result" onclick="copyOutput()">
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -967,7 +951,7 @@
                 const tagClass = ch.type === 'cyrillic' ? 'tag-cyrillic' : 'tag-greek';
 
                 return `
-      <div class="char-badge ${typeClass}" onclick="copyChar('${ch.alt}', '${ch.name}')" title="Klik untuk menyalin: ${ch.alt} (${ch.altCode})">
+        <div class="char-badge ${typeClass}" onclick="insertChar('${ch.alt}', '${ch.name}')" title="Klik untuk memasukkan: ${ch.alt} (${ch.altCode})">
         <div class="flex gap-2 items-baseline">
           <span class="char-latin-val">${ch.latin}</span>
           <span class="text-gray-600 text-xs">→</span>
@@ -982,8 +966,32 @@
             }).join('');
         }
 
-        function copyChar(char, name) {
-            copyToClipboard(char, `Disalin: "${char}" — ${name}`, 'success', '⌨');
+        // function copyChar(char, name) {
+        //     copyToClipboard(char, `Disalin: "${char}" — ${name}`, 'success', '⌨');
+        // }
+
+        function insertChar(char, name) {
+            const input = document.getElementById('input-text');
+
+            // Simpan posisi kursor saat ini
+            const startPos = input.selectionStart;
+            const endPos = input.selectionEnd;
+
+            // Sisipkan karakter di posisi kursor
+            input.value = input.value.substring(0, startPos) +
+                char +
+                input.value.substring(endPos);
+
+            // Kembalikan fokus ke input dan letakkan kursor setelah karakter yang disisipkan
+            input.focus();
+            input.selectionStart = startPos + char.length;
+            input.selectionEnd = startPos + char.length;
+
+            // Panggil handleInput untuk memperbarui output Punycode dan analisis
+            handleInput();
+
+            // Tampilkan notifikasi toast kecil
+            showToast(`Ditambahkan: "${char}"`, 'info', '✍️');
         }
 
         // SIMULASI DOMAIN BUTTONS
