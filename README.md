@@ -2,7 +2,7 @@
 
 An interactive web application (learning tool) that demonstrates how _Homograph_ attacks (domain spoofing) work using Cyrillic and Greek characters. This tool helps visualize how cybercriminals spoof URLs, as well as how to detect them using _Punycode_ conversion.
 
-![WEb Page](web-page.jpeg)
+![WEb Page](web_page.jpeg)
 
 This application was created for **educational purposes** to help users and developers better understand this threat, how it works, and how to detect it using the _Punycode_ system (`xn--`).
 
