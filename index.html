@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyrillic Homograph & Punycode Utility</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        mono: ['JetBrains Mono', 'monospace'],
+                        sans: ['Space Grotesk', 'sans-serif'],
+                    },
+                    colors: {
+                        shark: {
+                            950: '#0a0b0d',
+                            900: '#0f1114',
+                            800: '#16191e',
+                            700: '#1e2228',
+                            600: '#272d36',
+                            500: '#333b47',
+                        },
+                        acid: {
+                            400: '#a3ff47',
+                            500: '#88e830',
+                            600: '#6bbd1e',
+                        },
+                        crimson: {
+                            400: '#ff4757',
+                            500: '#e8303f',
+                        },
+                        amber: {
+                            400: '#ffba08',
+                            500: '#e0a500',
+                        },
+                        cyan: {
+                            400: '#00d4ff',
+                            500: '#00b8e0',
+                        }
+                    },
+                    animation: {
+                        'toast-in': 'toastIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+                        'toast-out': 'toastOut 0.25s ease-in forwards',
+                        'pulse-glow': 'pulseGlow 2s ease-in-out infinite',
+                        'scan-line': 'scanLine 4s linear infinite',
+                    },
+                    keyframes: {
+                        toastIn: {
+                            '0%': { opacity: '0', transform: 'translateY(20px) scale(0.9)' },
+                            '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+                        },
+                        toastOut: {
+                            '0%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+                            '100%': { opacity: '0', transform: 'translateY(-10px) scale(0.95)' },
+                        },
+                        pulseGlow: {
+                            '0%, 100%': { boxShadow: '0 0 5px rgba(163, 255, 71, 0.2)' },
+                            '50%': { boxShadow: '0 0 20px rgba(163, 255, 71, 0.5)' },
+                        },
+                        scanLine: {
+                            '0%': { top: '0%' },
+                            '100%': { top: '100%' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #0a0b0d;
+            background-image:
+                radial-gradient(ellipse at 20% 50%, rgba(163, 255, 71, 0.03) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(0, 212, 255, 0.03) 0%, transparent 60%),
+                linear-gradient(180deg, transparent 0%, rgba(163, 255, 71, 0.02) 100%);
+            min-height: 100vh;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .grid-bg {
+            background-image:
+                linear-gradient(rgba(163, 255, 71, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(163, 255, 71, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        .terminal-border {
+            border: 1px solid rgba(163, 255, 71, 0.2);
+            box-shadow:
+                0 0 0 1px rgba(163, 255, 71, 0.05),
+                inset 0 1px 0 rgba(163, 255, 71, 0.1),
+                0 4px 24px rgba(0, 0, 0, 0.6);
+        }
+
+        .terminal-border:hover {
+            border-color: rgba(163, 255, 71, 0.35);
+            box-shadow:
+                0 0 0 1px rgba(163, 255, 71, 0.08),
+                inset 0 1px 0 rgba(163, 255, 71, 0.15),
+                0 8px 32px rgba(0, 0, 0, 0.7);
+        }
+
+        .card-glow {
+            background: linear-gradient(135deg, #16191e 0%, #1a1e26 100%);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 4px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .char-badge {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 10px;
+            background: linear-gradient(135deg, #1e2228, #16191e);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .char-badge::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(163, 255, 71, 0.4), transparent);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .char-badge:hover {
+            border-color: rgba(163, 255, 71, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(163, 255, 71, 0.1);
+        }
+
+        .char-badge:hover::before {
+            opacity: 1;
+        }
+
+        .char-badge.cyrillic-type {
+            border-color: rgba(255, 71, 87, 0.2);
+        }
+
+        .char-badge.cyrillic-type:hover {
+            border-color: rgba(255, 71, 87, 0.5);
+            box-shadow: 0 6px 20px rgba(255, 71, 87, 0.1);
+        }
+
+        .char-badge.greek-type {
+            border-color: rgba(0, 212, 255, 0.2);
+        }
+
+        .char-badge.greek-type:hover {
+            border-color: rgba(0, 212, 255, 0.5);
+            box-shadow: 0 6px 20px rgba(0, 212, 255, 0.1);
+        }
+
+        .sim-btn {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            padding: 8px 14px;
+            background: linear-gradient(135deg, #1e2228, #272d36);
+            border: 1px solid rgba(255, 186, 8, 0.25);
+            border-radius: 6px;
+            color: #ffba08;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .sim-btn:hover {
+            background: linear-gradient(135deg, #272d36, #333b47);
+            border-color: rgba(255, 186, 8, 0.5);
+            box-shadow: 0 4px 16px rgba(255, 186, 8, 0.12);
+            transform: translateY(-1px);
+        }
+
+        .sim-btn:active {
+            transform: translateY(0);
+        }
+
+        textarea,
+        .output-area {
+            font-family: 'JetBrains Mono', monospace !important;
+            background: #0f1114 !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            border-radius: 10px !important;
+            color: #e2e8f0 !important;
+            resize: vertical;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        textarea:focus {
+            outline: none !important;
+            border-color: rgba(163, 255, 71, 0.4) !important;
+            box-shadow: 0 0 0 3px rgba(163, 255, 71, 0.08) !important;
+        }
+
+        .output-area {
+            background: #0a0b0d !important;
+            border: 1px solid rgba(163, 255, 71, 0.15) !important;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #a3ff47, #6bbd1e);
+            color: #0a0b0d;
+            font-weight: 600;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            font-family: 'Space Grotesk', sans-serif;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #b5ff6b, #88e830);
+            box-shadow: 0 4px 20px rgba(163, 255, 71, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #94a3b8;
+            font-weight: 500;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-family: 'Space Grotesk', sans-serif;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-secondary:hover {
+            border-color: rgba(255, 71, 87, 0.4);
+            color: #ff4757;
+            background: rgba(255, 71, 87, 0.05);
+        }
+
+        .btn-copy-result {
+            background: transparent;
+            color: #00d4ff;
+            font-weight: 500;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid rgba(0, 212, 255, 0.25);
+            font-family: 'Space Grotesk', sans-serif;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-copy-result:hover {
+            border-color: rgba(0, 212, 255, 0.5);
+            color: #33dcff;
+            background: rgba(0, 212, 255, 0.05);
+            box-shadow: 0 4px 16px rgba(0, 212, 255, 0.1);
+        }
+
+        #toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        .toast {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 18px;
+            background: linear-gradient(135deg, #1e2228, #272d36);
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #e2e8f0;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+            animation: toastIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            pointer-events: none;
+            max-width: 280px;
+        }
+
+        .toast.success {
+            border: 1px solid rgba(163, 255, 71, 0.3);
+        }
+
+        .toast.success .toast-icon {
+            color: #a3ff47;
+        }
+
+        .toast.info {
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .toast.info .toast-icon {
+            color: #00d4ff;
+        }
+
+        .toast.warn {
+            border: 1px solid rgba(255, 186, 8, 0.3);
+        }
+
+        .toast.warn .toast-icon {
+            color: #ffba08;
+        }
+
+        .toast.leaving {
+            animation: toastOut 0.25s ease-in forwards;
+        }
+
+        .section-label {
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #4b5563;
+        }
+
+        .tag-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+
+        .tag-cyrillic {
+            background: rgba(255, 71, 87, 0.12);
+            color: #ff6b7a;
+            border: 1px solid rgba(255, 71, 87, 0.2);
+        }
+
+        .tag-greek {
+            background: rgba(0, 212, 255, 0.12);
+            color: #33dcff;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+        }
+
+        .tag-latin {
+            background: rgba(163, 255, 71, 0.12);
+            color: #a3ff47;
+            border: 1px solid rgba(163, 255, 71, 0.2);
+        }
+
+        .highlight-cyrillic {
+            color: #ff4757;
+            font-weight: 600;
+        }
+
+        .highlight-greek {
+            color: #00d4ff;
+            font-weight: 600;
+        }
+
+        .highlight-latin {
+            color: #a3ff47;
+        }
+
+        .scrollbar-thin::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: rgba(163, 255, 71, 0.2);
+            border-radius: 2px;
+        }
+
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+            background: rgba(163, 255, 71, 0.4);
+        }
+
+        .header-scan {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header-scan::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(163, 255, 71, 0.6), transparent);
+            animation: scanLine 4s linear infinite;
+            pointer-events: none;
+        }
+
+        .punycode-live {
+            word-break: break-all;
+            letter-spacing: 0.03em;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #a3ff47;
+            box-shadow: 0 0 6px rgba(163, 255, 71, 0.6);
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+
+            0%,
+            100% {
+                opacity: 1;
+                box-shadow: 0 0 6px rgba(163, 255, 71, 0.6);
+            }
+
+            50% {
+                opacity: 0.5;
+                box-shadow: 0 0 12px rgba(163, 255, 71, 0.9);
+            }
+        }
+
+        .char-latin-val {
+            font-size: 20px;
+            font-weight: 700;
+            color: #e2e8f0;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .char-alt-val {
+            font-size: 15px;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .char-name {
+            font-size: 9px;
+            color: #6b7280;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        @media (max-width: 640px) {
+            .char-badge {
+                padding: 6px 8px;
+            }
+
+            .char-latin-val {
+                font-size: 16px;
+            }
+
+            .char-alt-val {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+
+<body class="dark min-h-screen grid-bg">
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Header -->
+    <header class="header-scan border-b border-white/5 bg-shark-950/80 backdrop-blur-xl sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div
+                    class="w-8 h-8 rounded-lg bg-gradient-to-br from-acid-400 to-acid-600 flex items-center justify-center text-shark-950 font-mono font-black text-sm">
+                    Ψ</div>
+                <div>
+                    <h1 class="text-sm font-bold text-white tracking-tight leading-none">Cyrillic Homograph</h1>
+                    <p class="text-xs text-gray-500 font-mono leading-none mt-0.5">& Punycode Utility v2.0</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="status-dot"></div>
+                <span class="text-xs text-gray-500 font-mono hidden sm:inline">READY</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Alert Banner -->
+    <div class="bg-amber-400/5 border-b border-amber-400/10 text-center py-2 px-4">
+        <p class="text-xs text-amber-400/80 font-mono">
+            ⚠ EDUCATIONAL TOOL — Karakter homoglyph Cyrillic/Greek dapat dipakai untuk domain spoofing &amp; phishing.
+            Gunakan dengan bijak.
+        </p>
+    </div>
+
+    <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+
+        <!-- SECTION 1: KAMUS KARAKTER -->
+        <section class="card-glow rounded-2xl p-5">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <div class="section-label mb-1">Modul 01</div>
+                    <h2 class="text-base font-bold text-white">Kamus Karakter Homoglyph</h2>
+                    <p class="text-xs text-gray-500 mt-0.5">Klik karakter untuk menyalinnya ke clipboard</p>
+                </div>
+                <div class="flex gap-2 flex-wrap justify-end">
+                    <span class="tag-pill tag-latin">Latin</span>
+                    <span class="tag-pill tag-cyrillic">Cyrillic</span>
+                    <span class="tag-pill tag-greek">Greek</span>
+                </div>
+            </div>
+
+            <!-- Filter tabs -->
+            <div class="flex gap-2 mb-4 flex-wrap">
+                <button onclick="filterChars('all')" id="filter-all"
+                    class="filter-tab active text-xs px-3 py-1.5 rounded-md font-medium transition-all bg-acid-400/10 text-acid-400 border border-acid-400/30">Semua</button>
+                <button onclick="filterChars('cyrillic')" id="filter-cyrillic"
+                    class="filter-tab text-xs px-3 py-1.5 rounded-md font-medium transition-all text-gray-400 border border-white/10 hover:border-crimson-400/30 hover:text-crimson-400">Cyrillic</button>
+                <button onclick="filterChars('greek')" id="filter-greek"
+                    class="filter-tab text-xs px-3 py-1.5 rounded-md font-medium transition-all text-gray-400 border border-white/10 hover:border-cyan-400/30 hover:text-cyan-400">Greek</button>
+            </div>
+
+            <!-- Character Grid -->
+            <div id="char-grid" class="flex flex-wrap gap-2 max-h-96 overflow-y-auto scrollbar-thin pr-1"></div>
+        </section>
+
+        <!-- SECTION 2 & 3: INPUT + SIMULASI -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            <!-- Input Panel -->
+            <section class="card-glow rounded-2xl p-5 flex flex-col gap-4">
+                <div>
+                    <div class="section-label mb-1">Modul 02</div>
+                    <h2 class="text-base font-bold text-white">Input Teks / Domain</h2>
+                    <p class="text-xs text-gray-500 mt-0.5">Masukkan teks yang mengandung karakter Cyrillic/Greek</p>
+                </div>
+
+                <div>
+                    <textarea id="input-text" rows="6"
+                        placeholder="Ketik atau tempel domain/teks di sini...&#10;&#10;Contoh: pаypal.com (huruf 'a' adalah Cyrillic)"
+                        class="w-full p-3 text-sm focus:outline-none" oninput="handleInput()"></textarea>
+                </div>
+
+                <!-- Character Counter -->
+                <div class="flex items-center justify-between text-xs text-gray-600 font-mono px-1">
+                    <span id="char-count">0 karakter</span>
+                    <span id="script-detect" class="text-acid-400/60">— belum ada input</span>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-wrap gap-2">
+                    <button class="btn-primary flex-1" onclick="convertAndCopy()">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        Salin Punycode
+                    </button>
+                    <button class="btn-secondary" onclick="clearAll()">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Clear
+                    </button>
+                </div>
+            </section>
+
+            <!-- Simulasi Domain -->
+            <section class="card-glow rounded-2xl p-5 flex flex-col gap-4">
+                <div>
+                    <div class="section-label mb-1">Modul 03</div>
+                    <h2 class="text-base font-bold text-white">Simulasi Domain Palsu</h2>
+                    <p class="text-xs text-gray-500 mt-0.5">Domain terlihat asli secara visual tapi mengandung karakter
+                        Unicode tersembunyi</p>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="section-label">Klik untuk load ke input:</div>
+                    <div id="sim-buttons" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <!-- Visual comparison -->
+                <div class="bg-shark-900 rounded-xl p-4 border border-white/5">
+                    <div class="section-label mb-2">Perbandingan Visual:</div>
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-3">
+                            <span class="tag-pill tag-latin text-xs">ASLI</span>
+                            <span class="font-mono text-sm text-green-400" id="compare-original">—</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="tag-pill tag-cyrillic text-xs">PALSU</span>
+                            <span class="font-mono text-sm text-red-400" id="compare-fake">—</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="tag-pill tag-greek text-xs">PUNYA</span>
+                            <span class="font-mono text-xs text-cyan-400 break-all" id="compare-puny">—</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-amber-400/5 border border-amber-400/15 rounded-lg p-3">
+                    <p class="text-xs text-amber-400/70 leading-relaxed">
+                        <strong class="text-amber-400">⚠ Bahaya:</strong> Browser modern menampilkan domain di atas URL
+                        bar — pengguna awam sulit membedakan tanpa melihat Punycode-nya.
+                    </p>
+                </div>
+            </section>
+        </div>
+
+        <!-- SECTION 4: OUTPUT PUNYCODE REALTIME -->
+        <section class="terminal-border rounded-2xl p-5 bg-shark-900/50">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="section-label">Modul 04</div>
+                    <h2 class="text-base font-bold text-white ml-2">Output Konversi Punycode</h2>
+                    <div class="flex gap-1.5 ml-2">
+                        <div class="w-2.5 h-2.5 rounded-full bg-red-500/60"></div>
+                        <div class="w-2.5 h-2.5 rounded-full bg-yellow-500/60"></div>
+                        <div class="w-2.5 h-2.5 rounded-full bg-acid-400/60"></div>
+                    </div>
+                </div>
+                <button class="btn-copy-result" onclick="copyOutput()">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    Salin Hasil
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                <!-- Punycode Result -->
+                <div>
+                    <div class="section-label mb-2 flex items-center gap-2">
+                        <span>Punycode (xn--)</span>
+                        <span class="w-1.5 h-1.5 rounded-full bg-acid-400 animate-pulse inline-block"></span>
+                        <span class="text-acid-400/60">realtime</span>
+                    </div>
+                    <div id="output-punycode"
+                        class="output-area min-h-24 p-3 rounded-xl text-sm font-mono punycode-live text-acid-400 flex items-start leading-relaxed">
+                        <span class="text-gray-600">— output akan muncul di sini —</span>
+                    </div>
+                </div>
+
+                <!-- Character Analysis -->
+                <div>
+                    <div class="section-label mb-2">Analisis Karakter</div>
+                    <div id="output-analysis"
+                        class="output-area min-h-24 p-3 rounded-xl text-xs font-mono overflow-y-auto scrollbar-thin max-h-48">
+                        <span class="text-gray-600">— analisis akan muncul di sini —</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- URL Bar Simulation -->
+            <div class="mt-4">
+                <div class="section-label mb-2">Simulasi URL Bar Browser</div>
+                <div class="bg-shark-950 border border-white/8 rounded-lg flex items-center gap-3 px-4 py-2.5">
+                    <svg class="w-4 h-4 text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div class="flex-1 overflow-hidden">
+                        <span class="text-xs text-gray-500 font-mono">https://</span>
+                        <span id="url-bar-display" class="text-sm font-mono text-white">
+                            <span class="text-gray-500 italic">ketik domain di input...</span>
+                        </span>
+                    </div>
+                    <span id="url-security-badge"
+                        class="hidden text-xs px-2 py-0.5 rounded font-medium">SUSPICIOUS</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- INFO FOOTER -->
+        <section class="grid grid-cols-1 sm:grid-cols-3 gap-4 pb-4">
+            <div class="card-glow rounded-xl p-4">
+                <div class="text-acid-400 text-lg mb-2">🔍</div>
+                <h3 class="text-sm font-semibold text-white mb-1">Apa itu Homoglyph?</h3>
+                <p class="text-xs text-gray-500 leading-relaxed">Karakter dari aksara berbeda yang memiliki bentuk
+                    visual identik. Digunakan pelaku kejahatan siber untuk membuat domain/URL palsu yang sulit dibedakan
+                    secara kasat mata.</p>
+            </div>
+            <div class="card-glow rounded-xl p-4">
+                <div class="text-cyan-400 text-lg mb-2">🔤</div>
+                <h3 class="text-sm font-semibold text-white mb-1">Apa itu Punycode?</h3>
+                <p class="text-xs text-gray-500 leading-relaxed">Encoding yang mengubah karakter Unicode menjadi string
+                    ASCII yang kompatibel dengan DNS. Format: <span class="font-mono text-cyan-400">xn--</span>. Browser
+                    modern menampilkan karakter aslinya secara default.</p>
+            </div>
+            <div class="card-glow rounded-xl p-4">
+                <div class="text-amber-400 text-lg mb-2">🛡️</div>
+                <h3 class="text-sm font-semibold text-white mb-1">Cara Lindungi Diri</h3>
+                <p class="text-xs text-gray-500 leading-relaxed">Selalu periksa URL sebenarnya di address bar. Gunakan
+                    password manager (hanya isi di domain yang dikenali). Aktifkan 2FA. Waspada email phishing yang
+                    meniru brand terkenal.</p>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        //════════════════════ DATA: KARAKTER HOMOGLYPH ════════════════════
+
+        const CHAR_DATA = [
+            // Cyrillic homoglyphs
+            { latin: 'a', alt: 'а', altCode: 'U+0430', name: 'Cyrillic Small A', type: 'cyrillic', latinCode: 'U+0061' },
+            { latin: 'A', alt: 'А', altCode: 'U+0410', name: 'Cyrillic Capital A', type: 'cyrillic', latinCode: 'U+0041' },
+            { latin: 'B', alt: 'В', altCode: 'U+0412', name: 'Cyrillic Capital Ve', type: 'cyrillic', latinCode: 'U+0042' },
+            { latin: 'c', alt: 'с', altCode: 'U+0441', name: 'Cyrillic Small Es', type: 'cyrillic', latinCode: 'U+0063' },
+            { latin: 'C', alt: 'С', altCode: 'U+0421', name: 'Cyrillic Capital Es', type: 'cyrillic', latinCode: 'U+0043' },
+            { latin: 'e', alt: 'е', altCode: 'U+0435', name: 'Cyrillic Small Ie', type: 'cyrillic', latinCode: 'U+0065' },
+            { latin: 'E', alt: 'Е', altCode: 'U+0415', name: 'Cyrillic Capital Ie', type: 'cyrillic', latinCode: 'U+0045' },
+            { latin: 'i', alt: 'і', altCode: 'U+0456', name: 'Cyrillic Byelorussian I', type: 'cyrillic', latinCode: 'U+0069' },
+            { latin: 'j', alt: 'ј', altCode: 'U+0458', name: 'Cyrillic Small Je', type: 'cyrillic', latinCode: 'U+006A' },
+            { latin: 'K', alt: 'К', altCode: 'U+041A', name: 'Cyrillic Capital Ka', type: 'cyrillic', latinCode: 'U+004B' },
+            { latin: 'M', alt: 'М', altCode: 'U+041C', name: 'Cyrillic Capital Em', type: 'cyrillic', latinCode: 'U+004D' },
+            { latin: 'H', alt: 'Н', altCode: 'U+041D', name: 'Cyrillic Capital En', type: 'cyrillic', latinCode: 'U+0048' },
+            { latin: 'o', alt: 'о', altCode: 'U+043E', name: 'Cyrillic Small O', type: 'cyrillic', latinCode: 'U+006F' },
+            { latin: 'O', alt: 'О', altCode: 'U+041E', name: 'Cyrillic Capital O', type: 'cyrillic', latinCode: 'U+004F' },
+            { latin: 'p', alt: 'р', altCode: 'U+0440', name: 'Cyrillic Small Er', type: 'cyrillic', latinCode: 'U+0070' },
+            { latin: 'P', alt: 'Р', altCode: 'U+0420', name: 'Cyrillic Capital Er', type: 'cyrillic', latinCode: 'U+0050' },
+            { latin: 'q', alt: 'ԛ', altCode: 'U+051B', name: 'Cyrillic Small Qa', type: 'cyrillic', latinCode: 'U+0071' },
+            { latin: 's', alt: 'ѕ', altCode: 'U+0455', name: 'Cyrillic Small Dze', type: 'cyrillic', latinCode: 'U+0073' },
+            { latin: 'T', alt: 'Т', altCode: 'U+0422', name: 'Cyrillic Capital Te', type: 'cyrillic', latinCode: 'U+0054' },
+            { latin: 'x', alt: 'х', altCode: 'U+0445', name: 'Cyrillic Small Ha', type: 'cyrillic', latinCode: 'U+0078' },
+            { latin: 'X', alt: 'Х', altCode: 'U+0425', name: 'Cyrillic Capital Ha', type: 'cyrillic', latinCode: 'U+0058' },
+            { latin: 'y', alt: 'у', altCode: 'U+0443', name: 'Cyrillic Small U', type: 'cyrillic', latinCode: 'U+0079' },
+            { latin: 'Y', alt: 'Ү', altCode: 'U+04AE', name: 'Cyrillic Capital Straight U', type: 'cyrillic', latinCode: 'U+0059' },
+
+            // Greek homoglyphs
+            { latin: 'a', alt: 'α', altCode: 'U+03B1', name: 'Greek Small Alpha', type: 'greek', latinCode: 'U+0061' },
+            { latin: 'A', alt: 'Α', altCode: 'U+0391', name: 'Greek Capital Alpha', type: 'greek', latinCode: 'U+0041' },
+            { latin: 'B', alt: 'Β', altCode: 'U+0392', name: 'Greek Capital Beta', type: 'greek', latinCode: 'U+0042' },
+            { latin: 'E', alt: 'Ε', altCode: 'U+0395', name: 'Greek Capital Epsilon', type: 'greek', latinCode: 'U+0045' },
+            { latin: 'H', alt: 'Η', altCode: 'U+0397', name: 'Greek Capital Eta', type: 'greek', latinCode: 'U+0048' },
+            { latin: 'i', alt: 'ι', altCode: 'U+03B9', name: 'Greek Small Iota', type: 'greek', latinCode: 'U+0069' },
+            { latin: 'I', alt: 'Ι', altCode: 'U+0399', name: 'Greek Capital Iota', type: 'greek', latinCode: 'U+0049' },
+            { latin: 'K', alt: 'Κ', altCode: 'U+039A', name: 'Greek Capital Kappa', type: 'greek', latinCode: 'U+004B' },
+            { latin: 'M', alt: 'Μ', altCode: 'U+039C', name: 'Greek Capital Mu', type: 'greek', latinCode: 'U+004D' },
+            { latin: 'n', alt: 'η', altCode: 'U+03B7', name: 'Greek Small Eta', type: 'greek', latinCode: 'U+006E' },
+            { latin: 'N', alt: 'Ν', altCode: 'U+039D', name: 'Greek Capital Nu', type: 'greek', latinCode: 'U+004E' },
+            { latin: 'o', alt: 'ο', altCode: 'U+03BF', name: 'Greek Small Omicron', type: 'greek', latinCode: 'U+006F' },
+            { latin: 'O', alt: 'Ο', altCode: 'U+039F', name: 'Greek Capital Omicron', type: 'greek', latinCode: 'U+004F' },
+            { latin: 'p', alt: 'ρ', altCode: 'U+03C1', name: 'Greek Small Rho', type: 'greek', latinCode: 'U+0070' },
+            { latin: 'P', alt: 'Ρ', altCode: 'U+03A1', name: 'Greek Capital Rho', type: 'greek', latinCode: 'U+0050' },
+            { latin: 't', alt: 'τ', altCode: 'U+03C4', name: 'Greek Small Tau', type: 'greek', latinCode: 'U+0074' },
+            { latin: 'T', alt: 'Τ', altCode: 'U+03A4', name: 'Greek Capital Tau', type: 'greek', latinCode: 'U+0054' },
+            { latin: 'u', alt: 'υ', altCode: 'U+03C5', name: 'Greek Small Upsilon', type: 'greek', latinCode: 'U+0075' },
+            { latin: 'v', alt: 'ν', altCode: 'U+03BD', name: 'Greek Small Nu', type: 'greek', latinCode: 'U+0076' },
+            { latin: 'X', alt: 'Χ', altCode: 'U+03A7', name: 'Greek Capital Chi', type: 'greek', latinCode: 'U+0058' },
+            { latin: 'x', alt: 'χ', altCode: 'U+03C7', name: 'Greek Small Chi', type: 'greek', latinCode: 'U+0078' },
+            { latin: 'Y', alt: 'Υ', altCode: 'U+03A5', name: 'Greek Capital Upsilon', type: 'greek', latinCode: 'U+0059' },
+            { latin: 'Z', alt: 'Ζ', altCode: 'U+0396', name: 'Greek Capital Zeta', type: 'greek', latinCode: 'U+005A' },
+        ];
+
+        //════════════════════ DATA: SIMULASI DOMAIN ════════════════════
+
+        const SIM_DOMAINS = [
+            // pаypal.com — 'a' Cyrillic (U+0430)
+            { label: 'p\u0430ypal.com', original: 'paypal.com', desc: 'a=Cyrillic' },
+            // kоmpas.com — 'o' Cyrillic (U+043E)
+            { label: 'k\u043Empas.com', original: 'kompas.com', desc: 'o=Cyrillic' },
+            // аdobe.com — 'a' Cyrillic
+            { label: '\u0430dobe.com', original: 'adobe.com', desc: 'a=Cyrillic' },
+            // fасebook.com — 'a','c' Cyrillic
+            { label: 'f\u0430\u0441ebook.com', original: 'facebook.com', desc: 'a,c=Cyrillic' },
+            // gоogle.com — 'o' Cyrillic
+            { label: 'g\u043E\u043Egle.com', original: 'google.com', desc: 'o,o=Cyrillic' },
+            // аmаzon.com — 'a','a' Cyrillic
+            { label: '\u0430m\u0430zon.com', original: 'amazon.com', desc: 'a,a=Cyrillic' },
+            // miсrosoft.com — 'c' Cyrillic
+            { label: 'mi\u0441rosoft.com', original: 'microsoft.com', desc: 'c=Cyrillic' },
+            // twіtter.com — 'i' Cyrillic Byelorussian I
+            { label: 'tw\u0456tter.com', original: 'twitter.com', desc: 'i=Cyrillic' },
+            // арple.com — 'p' Cyrillic
+            { label: 'a\u0440ple.com', original: 'apple.com', desc: 'p=Cyrillic' },
+            // gοοgle.com — 'o' Greek Omicron
+            { label: 'g\u03BF\u03BFgle.com', original: 'google.com', desc: 'o,o=Greek' },
+        ];
+
+        // PUNYCODE ENGINE (Manual Implementation — Bootstring RFC 3492)
+        const Punycode = (() => {
+            const BASE = 36, TMIN = 1, TMAX = 26, SKEW = 38;
+            const DAMP = 700, INITIAL_BIAS = 72, INITIAL_N = 128;
+            const DELIMITER = '-';
+
+            function adapt(delta, numPoints, firstTime) {
+                delta = firstTime ? Math.floor(delta / DAMP) : delta >> 1;
+                delta += Math.floor(delta / numPoints);
+                let k = 0;
+                while (delta > Math.floor((BASE - TMIN) * TMAX / 2)) {
+                    delta = Math.floor(delta / (BASE - TMIN));
+                    k += BASE;
+                }
+                return k + Math.floor((BASE - TMIN + 1) * delta / (delta + SKEW));
+            }
+
+            function digitToBasic(digit) {
+                return digit + 22 + 75 * (digit < 26);
+            }
+
+            function encodeLabel(input) {
+                const output = [];
+                const codePoints = [];
+                for (let i = 0; i < input.length; i++) {
+                    codePoints.push(input.codePointAt(i));
+                    if (input.codePointAt(i) > 0xFFFF) i++;
+                }
+
+                let n = INITIAL_N, delta = 0, bias = INITIAL_BIAS;
+                let basicLen = 0;
+
+                for (const cp of codePoints) {
+                    if (cp < 128) { output.push(String.fromCharCode(cp)); basicLen++; }
+                }
+
+                if (basicLen === codePoints.length) return output.join('');
+
+                if (basicLen) output.push(DELIMITER);
+
+                let handledCPCount = basicLen;
+                while (handledCPCount < codePoints.length) {
+                    let m = Infinity;
+                    for (const cp of codePoints) { if (cp >= n && cp < m) m = cp; }
+                    delta += (m - n) * (handledCPCount + 1);
+                    n = m;
+
+                    for (const cp of codePoints) {
+                        if (cp < n) delta++;
+                        if (cp === n) {
+                            let q = delta, k = BASE;
+                            while (true) {
+                                const t = k <= bias ? TMIN : (k >= bias + TMAX ? TMAX : k - bias);
+                                if (q < t) break;
+                                output.push(String.fromCharCode(digitToBasic(t + (q - t) % (BASE - t))));
+                                q = Math.floor((q - t) / (BASE - t));
+                                k += BASE;
+                            }
+                            output.push(String.fromCharCode(digitToBasic(q)));
+                            bias = adapt(delta, handledCPCount + 1, handledCPCount === basicLen);
+                            delta = 0;
+                            handledCPCount++;
+                        }
+                    }
+                    delta++;
+                    n++;
+                }
+
+                const encoded = output.join('');
+                return 'xn--' + encoded;
+            }
+
+            function encode(input) {
+                const parts = input.toLowerCase().split('.');
+                return parts.map(part => {
+                    if (!part) return part;
+                    const needsEncoding = [...part].some(ch => ch.codePointAt(0) >= 128);
+                    if (!needsEncoding) return part;
+                    const encoded = encodeLabel(part);
+                    return encoded;
+                }).join('.');
+            }
+
+            return { encode };
+        })();
+
+        // TOAST NOTIFICATION SYSTEM
+        function showToast(message, type = 'success', icon = '✓') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+    <span class="toast-icon text-base">${icon}</span>
+    <span>${message}</span>
+  `;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('leaving');
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+
+        // CLIPBOARD UTILITY
+        async function copyToClipboard(text, message = 'Disalin ke clipboard!', type = 'success', icon = '✓') {
+            try {
+                await navigator.clipboard.writeText(text);
+                showToast(message, type, icon);
+            } catch {
+                // fallback
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                showToast(message, type, icon);
+            }
+        }
+
+        // CHARACTER GRID RENDERING
+        let currentFilter = 'all';
+
+        function filterChars(type) {
+            currentFilter = type;
+            document.querySelectorAll('.filter-tab').forEach(btn => {
+                btn.classList.remove('bg-acid-400/10', 'text-acid-400', 'border-acid-400/30',
+                    'bg-crimson-400/10', 'text-crimson-400', 'border-crimson-400/30',
+                    'bg-cyan-400/10', 'text-cyan-400', 'border-cyan-400/30');
+                btn.classList.add('text-gray-400', 'border-white/10');
+            });
+
+            const activeBtn = document.getElementById(`filter-${type}`);
+            if (type === 'all') {
+                activeBtn.classList.remove('text-gray-400', 'border-white/10');
+                activeBtn.classList.add('bg-acid-400/10', 'text-acid-400', 'border-acid-400/30');
+            } else if (type === 'cyrillic') {
+                activeBtn.classList.remove('text-gray-400', 'border-white/10');
+                activeBtn.classList.add('bg-crimson-400/10', 'text-crimson-400', 'border-crimson-400/30');
+            } else {
+                activeBtn.classList.remove('text-gray-400', 'border-white/10');
+                activeBtn.classList.add('bg-cyan-400/10', 'text-cyan-400', 'border-cyan-400/30');
+            }
+
+            renderCharGrid();
+        }
+
+        function renderCharGrid() {
+            const grid = document.getElementById('char-grid');
+            const filtered = currentFilter === 'all' ? CHAR_DATA : CHAR_DATA.filter(c => c.type === currentFilter);
+
+            grid.innerHTML = filtered.map(ch => {
+                const typeClass = ch.type === 'cyrillic' ? 'cyrillic-type' : 'greek-type';
+                const altColor = ch.type === 'cyrillic' ? 'text-crimson-400' : 'text-cyan-400';
+                const tagClass = ch.type === 'cyrillic' ? 'tag-cyrillic' : 'tag-greek';
+
+                return `
+      <div class="char-badge ${typeClass}" onclick="copyChar('${ch.alt}', '${ch.name}')" title="Klik untuk menyalin: ${ch.alt} (${ch.altCode})">
+        <div class="flex gap-2 items-baseline">
+          <span class="char-latin-val">${ch.latin}</span>
+          <span class="text-gray-600 text-xs">→</span>
+          <span class="char-alt-val ${altColor}">${ch.alt}</span>
+        </div>
+        <div class="flex gap-1 items-center">
+          <span class="char-name">${ch.altCode}</span>
+        </div>
+        <span class="tag-pill ${tagClass} text-xs">${ch.type === 'cyrillic' ? 'CYR' : 'GRK'}</span>
+      </div>
+    `;
+            }).join('');
+        }
+
+        function copyChar(char, name) {
+            copyToClipboard(char, `Disalin: "${char}" — ${name}`, 'success', '⌨');
+        }
+
+        // SIMULASI DOMAIN BUTTONS
+        function renderSimButtons() {
+            const container = document.getElementById('sim-buttons');
+            container.innerHTML = SIM_DOMAINS.map((d, i) => `
+    <button class="sim-btn" onclick="loadSimDomain(${i})" title="${d.original} (${d.desc})">
+      ${escapeHtml(d.label)}
+    </button>
+  `).join('');
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        function loadSimDomain(index) {
+            const dom = SIM_DOMAINS[index];
+            const input = document.getElementById('input-text');
+            input.value = dom.label;
+            handleInput();
+
+            document.getElementById('compare-original').textContent = dom.original;
+            document.getElementById('compare-fake').textContent = dom.label;
+            const puny = Punycode.encode(dom.label);
+            document.getElementById('compare-puny').textContent = puny;
+
+            showToast(`Domain loaded: ${dom.desc}`, 'warn', '⚡');
+        }
+
+        // MAIN INPUT HANDLER — REALTIME CONVERSION
+        function handleInput() {
+            const raw = document.getElementById('input-text').value;
+            const len = [...raw].length; // Unicode-safe length
+
+            document.getElementById('char-count').textContent = `${len} karakter`;
+
+            if (!raw.trim()) {
+                document.getElementById('output-punycode').innerHTML = '<span class="text-gray-600">— output akan muncul di sini —</span>';
+                document.getElementById('output-analysis').innerHTML = '<span class="text-gray-600">— analisis akan muncul di sini —</span>';
+                document.getElementById('url-bar-display').innerHTML = '<span class="text-gray-500 italic">ketik domain di input...</span>';
+                document.getElementById('url-security-badge').classList.add('hidden');
+                document.getElementById('script-detect').textContent = '— belum ada input';
+                return;
+            }
+
+            // Punycode conversion
+            const punyResult = Punycode.encode(raw.trim());
+            const outputEl = document.getElementById('output-punycode');
+
+            if (punyResult.includes('xn--')) {
+                outputEl.innerHTML = `<span class="text-acid-400">${escapeHtml(punyResult)}</span>`;
+            } else {
+                outputEl.innerHTML = `<span class="text-gray-400">${escapeHtml(punyResult)}</span> <span class="text-gray-600 text-xs">(pure ASCII — no encoding needed)</span>`;
+            }
+
+            // Character analysis
+            analyzeCharacters(raw);
+
+            // URL bar simulation
+            updateUrlBar(raw, punyResult);
+
+            // Script detection
+            detectScripts(raw);
+        }
+
+        function analyzeCharacters(text) {
+            const analysis = document.getElementById('output-analysis');
+            const lines = [];
+            const seen = new Set();
+
+            for (const ch of text) {
+                const cp = ch.codePointAt(0);
+                const hex = 'U+' + cp.toString(16).toUpperCase().padStart(4, '0');
+
+                if (seen.has(ch)) continue;
+                seen.add(ch);
+
+                let scriptLabel = '';
+                let colorClass = 'text-gray-400';
+
+                if (cp >= 0x0400 && cp <= 0x04FF) {
+                    scriptLabel = '<span class="text-crimson-400">[CYR]</span>';
+                    colorClass = 'text-crimson-400';
+                } else if (cp >= 0x0370 && cp <= 0x03FF) {
+                    scriptLabel = '<span class="text-cyan-400">[GRK]</span>';
+                    colorClass = 'text-cyan-400';
+                } else if (cp < 128) {
+                    scriptLabel = '<span class="text-acid-400">[ASC]</span>';
+                    colorClass = 'text-acid-400/60';
+                } else {
+                    scriptLabel = '<span class="text-amber-400">[UNI]</span>';
+                    colorClass = 'text-amber-400';
+                }
+
+                lines.push(`${scriptLabel} <span class="${colorClass}">${escapeHtml(ch)}</span> <span class="text-gray-600">${hex}</span>`);
+            }
+
+            analysis.innerHTML = lines.length ? lines.join('\n') : '<span class="text-gray-600">—</span>';
+        }
+
+        function updateUrlBar(raw, puny) {
+            const urlBar = document.getElementById('url-bar-display');
+            const badge = document.getElementById('url-security-badge');
+            const isSuspicious = puny.includes('xn--');
+
+            urlBar.innerHTML = `<span class="${isSuspicious ? 'text-red-400' : 'text-white'}">${escapeHtml(raw)}</span>`;
+
+            if (isSuspicious) {
+                badge.classList.remove('hidden');
+                badge.className = 'text-xs px-2 py-0.5 rounded font-medium bg-red-500/20 text-red-400 border border-red-500/30';
+                badge.textContent = '⚠ SUSPICIOUS';
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function detectScripts(text) {
+            const scripts = new Set();
+            for (const ch of text) {
+                const cp = ch.codePointAt(0);
+                if (cp < 128) continue;
+                if (cp >= 0x0400 && cp <= 0x04FF) scripts.add('Cyrillic');
+                else if (cp >= 0x0370 && cp <= 0x03FF) scripts.add('Greek');
+                else scripts.add('Unicode');
+            }
+
+            const detectEl = document.getElementById('script-detect');
+            if (scripts.size === 0) {
+                detectEl.textContent = '✓ Pure ASCII';
+                detectEl.className = 'text-acid-400/60 text-xs font-mono';
+            } else {
+                detectEl.textContent = '⚠ Detected: ' + [...scripts].join(', ');
+                detectEl.className = 'text-red-400/80 text-xs font-mono';
+            }
+        }
+
+        // BUTTON ACTIONS
+        function convertAndCopy() {
+            const raw = document.getElementById('input-text').value.trim();
+            if (!raw) { showToast('Input masih kosong!', 'warn', '⚠'); return; }
+            const result = Punycode.encode(raw);
+            copyToClipboard(result, 'Punycode disalin!', 'success', '✓');
+        }
+
+        function copyOutput() {
+            const raw = document.getElementById('input-text').value.trim();
+            if (!raw) { showToast('Belum ada output untuk disalin.', 'warn', '⚠'); return; }
+            const result = Punycode.encode(raw);
+            copyToClipboard(result, 'Hasil Punycode disalin!', 'info', '📋');
+        }
+
+        function clearAll() {
+            document.getElementById('input-text').value = '';
+            document.getElementById('output-punycode').innerHTML = '<span class="text-gray-600">— output akan muncul di sini —</span>';
+            document.getElementById('output-analysis').innerHTML = '<span class="text-gray-600">— analisis akan muncul di sini —</span>';
+            document.getElementById('url-bar-display').innerHTML = '<span class="text-gray-500 italic">ketik domain di input...</span>';
+            document.getElementById('url-security-badge').classList.add('hidden');
+            document.getElementById('char-count').textContent = '0 karakter';
+            document.getElementById('script-detect').textContent = '— belum ada input';
+            document.getElementById('script-detect').className = 'text-acid-400/60 text-xs font-mono';
+            document.getElementById('compare-original').textContent = '—';
+            document.getElementById('compare-fake').textContent = '—';
+            document.getElementById('compare-puny').textContent = '—';
+            showToast('Input dibersihkan.', 'info', '🗑');
+        }
+
+        // INIT
+        document.addEventListener('DOMContentLoaded', () => {
+            renderCharGrid();
+            renderSimButtons();
+        });
+    </script>
+</body>
+
+</html>
