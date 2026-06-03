@@ -17,7 +17,7 @@ This application was created for **educational purposes** to help users and deve
 
 ## Live Website
 
-You can try the application directly without installing anything here: **[Live Demo](https://itsmeandra.github.io/Cyrillic-Tools)** _(Ubah URL ini jika Anda menggunakan platform hosting lain seperti Vercel/Netlify)_
+You can try the application directly without installing anything here: **[Live Demo](https://itsmeandra.github.io/Cyrillic-Tools/)**
 
 ## How to Run (Local Setup)
 
